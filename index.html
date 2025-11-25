@@ -1,0 +1,1140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Scouting America - Advancement Intelligence Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <style>
+    @media print {
+      body { 
+        background: white !important;
+        print-color-adjust: exact;
+        -webkit-print-color-adjust: exact;
+      }
+      .print-hidden { display: none !important; }
+      .print-block { display: block !important; }
+      .print-break-after { page-break-after: always; }
+      .print-break-before { page-break-before: always; }
+      .print-avoid-break { page-break-inside: avoid; }
+      @page { 
+        margin: 0.5in;
+        size: letter;
+      }
+      * {
+        box-shadow: none !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+    
+    // Icon components using Lucide
+    const Icon = ({ name, className }) => {
+      const iconRef = React.useRef(null);
+      
+      useEffect(() => {
+        if (iconRef.current && lucide && lucide[name]) {
+          iconRef.current.innerHTML = '';
+          const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+          svg.setAttribute('width', '24');
+          svg.setAttribute('height', '24');
+          svg.setAttribute('viewBox', '0 0 24 24');
+          svg.setAttribute('fill', 'none');
+          svg.setAttribute('stroke', 'currentColor');
+          svg.setAttribute('stroke-width', '2');
+          svg.setAttribute('stroke-linecap', 'round');
+          svg.setAttribute('stroke-linejoin', 'round');
+          svg.setAttribute('class', className || 'w-6 h-6');
+          svg.innerHTML = lucide[name]?.toString() || '';
+          
+          // Use lucide.createElement for proper icon rendering
+          const iconElement = lucide.createElement(lucide[name]);
+          iconRef.current.appendChild(iconElement);
+        }
+      }, [name]);
+      
+      return <span ref={iconRef} className={className}></span>;
+    };
+    
+    // Simple icon components
+    const Upload = ({ className }) => (
+      <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+        <polyline points="17 8 12 3 7 8"></polyline>
+        <line x1="12" y1="3" x2="12" y2="15"></line>
+      </svg>
+    );
+    
+    const AlertCircle = ({ className }) => (
+      <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="12" r="10"></circle>
+        <line x1="12" y1="8" x2="12" y2="12"></line>
+        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+      </svg>
+    );
+    
+    const CheckCircle = ({ className }) => (
+      <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+        <polyline points="22 4 12 14.01 9 11.01"></polyline>
+      </svg>
+    );
+    
+    const AlertTriangle = ({ className }) => (
+      <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+        <line x1="12" y1="9" x2="12" y2="13"></line>
+        <line x1="12" y1="17" x2="12.01" y2="17"></line>
+      </svg>
+    );
+
+    const AdvancementDashboard = () => {
+      const [data, setData] = useState(null);
+      const [error, setError] = useState(null);
+      const [districtName, setDistrictName] = useState('Your District');
+
+      const scrollToSection = (sectionId) => {
+        const element = document.getElementById(sectionId);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      };
+
+      const handleExport = () => {
+        const reportContent = document.getElementById('report-content');
+        if (!reportContent) return;
+        
+        const htmlContent = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>${districtName} - Advancement Report</title>
+  <style>
+    body { 
+      font-family: system-ui, -apple-system, sans-serif; 
+      margin: 20px;
+      background: white;
+    }
+    @media print {
+      @page { margin: 0.5in; }
+      .no-print { display: none !important; }
+    }
+  </style>
+  <script src="https://cdn.tailwindcss.com"><\/script>
+</head>
+<body>
+  <div class="no-print bg-blue-50 border border-blue-200 p-4 mb-6 rounded">
+    <p class="font-bold">📄 Ready to Export</p>
+    <p class="text-sm text-gray-700 mt-2">Use your browser's print function (Cmd+P / Ctrl+P) and select "Save as PDF"</p>
+  </div>
+  ${reportContent.innerHTML}
+  <script>
+    setTimeout(() => { window.print(); }, 500);
+  <\/script>
+</body>
+</html>`;
+        
+        const blob = new Blob([htmlContent], { type: 'text/html' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${districtName.replace(/\s+/g, '-')}-Advancement-Report-${new Date().toISOString().split('T')[0]}.html`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      };
+
+      const handleCopyToClipboard = async () => {
+        const reportContent = document.getElementById('report-content');
+        if (!reportContent) return;
+        
+        try {
+          const textContent = reportContent.innerText;
+          await navigator.clipboard.writeText(textContent);
+          
+          const btn = document.getElementById('copy-btn');
+          if (btn) {
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '✓ Copied!';
+            btn.classList.add('bg-green-600');
+            btn.classList.remove('bg-purple-600');
+            setTimeout(() => {
+              btn.innerHTML = originalText;
+              btn.classList.remove('bg-green-600');
+              btn.classList.add('bg-purple-600');
+            }, 2000);
+          }
+        } catch (err) {
+          alert('Failed to copy. Please try selecting the content manually.');
+        }
+      };
+
+      const parseCSV = (text, filename) => {
+        try {
+          const lines = text.split('\n');
+          let dataStartIndex = -1;
+          
+          for (let i = 0; i < lines.length; i++) {
+            if (lines[i].includes('distorgname')) {
+              dataStartIndex = i;
+              break;
+            }
+          }
+          
+          if (dataStartIndex === -1) throw new Error('Could not find data headers');
+
+          const headerLine = lines[dataStartIndex].replace(/\.\./g, '');
+          const headers = headerLine.split(',').map(h => h.replace(/^["'\s]+|["'\s]+$/g, ''));
+          
+          const rows = [];
+          for (let i = dataStartIndex + 1; i < lines.length; i++) {
+            const line = lines[i].trim();
+            if (!line) continue;
+            
+            const values = [];
+            let current = '';
+            let inQuotes = false;
+            
+            for (let j = 0; j < line.length; j++) {
+              const char = line[j];
+              if (char === '"') {
+                inQuotes = !inQuotes;
+              } else if (char === ',' && !inQuotes) {
+                values.push(current.replace(/^["'\s]+|["'\s]+$/g, ''));
+                current = '';
+              } else {
+                current += char;
+              }
+            }
+            values.push(current.replace(/^["'\s]+|["'\s]+$/g, ''));
+            
+            if (values.length >= headers.length) {
+              const row = {};
+              headers.forEach((header, idx) => {
+                row[header] = values[idx] || '';
+              });
+              if (row.organizationname && row.organizationname.trim()) {
+                rows.push(row);
+              }
+            }
+          }
+          
+          // Try to extract district name from the data
+          if (rows.length > 0 && rows[0].distorgname) {
+            const distName = rows[0].distorgname.replace(/\d+$/, '').trim();
+            if (distName && distName !== districtName && districtName === 'Your District') {
+              setDistrictName(distName);
+            }
+          }
+          
+          return { headers, rows, filename };
+        } catch (err) {
+          throw new Error(`Failed to parse ${filename}: ${err.message}`);
+        }
+      };
+
+      const handleFileUpload = async (event) => {
+        try {
+          setError(null);
+          const files = Array.from(event.target.files);
+          if (files.length === 0) return;
+
+          const processedData = {
+            cubScout: null,
+            scoutsBSA: null,
+            venturing: null,
+            seaScout: null
+          };
+
+          for (const file of files) {
+            const text = await file.text();
+            const parsed = parseCSV(text, file.name);
+            
+            if (file.name.toLowerCase().includes('cubscout')) {
+              processedData.cubScout = parsed;
+            } else if (file.name.toLowerCase().includes('scoutsbsa')) {
+              processedData.scoutsBSA = parsed;
+            } else if (file.name.toLowerCase().includes('venturing')) {
+              processedData.venturing = parsed;
+            } else if (file.name.toLowerCase().includes('seascout')) {
+              processedData.seaScout = parsed;
+            }
+          }
+
+          setData(processedData);
+        } catch (err) {
+          setError(err.message);
+        }
+      };
+
+      if (error) {
+        return (
+          <div className="min-h-screen bg-red-50 p-8 flex items-center justify-center">
+            <div className="bg-white rounded-lg shadow-lg p-8 max-w-2xl">
+              <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+              <h2 className="text-2xl font-bold text-red-600 mb-4 text-center">Error</h2>
+              <p className="text-gray-700 mb-4">{error}</p>
+              <button
+                onClick={() => { setError(null); setData(null); }}
+                className="w-full bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700"
+              >
+                Try Again
+              </button>
+            </div>
+          </div>
+        );
+      }
+
+      if (!data) {
+        return (
+          <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-8">
+            <div className="max-w-4xl mx-auto">
+              <div className="bg-white rounded-lg shadow-xl p-8">
+                <div className="text-center mb-6">
+                  <h1 className="text-3xl font-bold text-gray-800 mb-2">
+                    Scouting America
+                  </h1>
+                  <h2 className="text-xl text-gray-600 mb-2">
+                    Advancement Intelligence Dashboard
+                  </h2>
+                  <p className="text-sm text-gray-500">
+                    Upload your advancement CSV files from my.scouting.org to generate insights
+                  </p>
+                </div>
+                
+                <div className="mb-6">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    District Name (optional)
+                  </label>
+                  <input
+                    type="text"
+                    value={districtName === 'Your District' ? '' : districtName}
+                    onChange={(e) => setDistrictName(e.target.value || 'Your District')}
+                    placeholder="e.g., Gunpowder Falls"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+                
+                <div className="border-4 border-dashed border-gray-300 rounded-lg p-12 text-center">
+                  <Upload className="w-16 h-16 mx-auto mb-4 text-gray-400" />
+                  <p className="text-lg text-gray-600 mb-4">
+                    Upload your advancement CSV files
+                  </p>
+                  <input
+                    type="file"
+                    multiple
+                    accept=".csv,.txt"
+                    onChange={handleFileUpload}
+                    className="hidden"
+                    id="file-upload"
+                  />
+                  <label
+                    htmlFor="file-upload"
+                    className="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg cursor-pointer hover:bg-blue-700"
+                  >
+                    Select CSV Files
+                  </label>
+                  <p className="text-sm text-gray-500 mt-4">
+                    Upload: CubScout, ScoutsBSA, Venturing, and SeaScout reports
+                  </p>
+                </div>
+                
+                <div className="mt-8 bg-gray-50 rounded-lg p-4">
+                  <h3 className="font-bold text-gray-700 mb-2">📋 How to get your CSV files:</h3>
+                  <ol className="text-sm text-gray-600 space-y-1">
+                    <li>1. Log in to <strong>my.scouting.org</strong></li>
+                    <li>2. Go to <strong>Menu → Legacy Web Tools → Advancement Reports</strong></li>
+                    <li>3. Select your district and download each program's report</li>
+                    <li>4. Upload all files here (filenames should include CubScout, ScoutsBSA, etc.)</li>
+                  </ol>
+                </div>
+              </div>
+              
+              <div className="mt-4 text-center text-xs text-gray-500">
+                <p>Open source tool for Scouting America volunteers</p>
+                <p>Data stays in your browser - nothing is uploaded to any server</p>
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      // Calculate statistics for each program
+      const calculateStats = (programData) => {
+        if (!programData || !programData.rows) return null;
+        
+        const units = programData.rows.filter(row => 
+          row.organizationname && !row.organizationname.includes(districtName)
+        );
+        
+        const isScoutsBSA = programData.headers.includes('meritbadgesytd');
+        const isCubScout = programData.headers.includes('lionytd') || programData.headers.includes('tigerytd');
+        
+        let totalYouth = 0;
+        let totalRanksYTD = 0;
+        let totalRanksMTD = 0;
+        let totalMeritBadgesYTD = 0;
+        let totalMeritBadgesMTD = 0;
+        let unitsWithActivity = 0;
+        
+        let rankProgression = null;
+        let rankProgressionMTD = null;
+        
+        if (isScoutsBSA || isCubScout) {
+          rankProgression = {};
+          rankProgressionMTD = {};
+        }
+
+        units.forEach(row => {
+          const youth = parseInt(row.youthqtt) || 0;
+          totalYouth += youth;
+          
+          let ranksYTD = 0;
+          let ranksMTD = 0;
+          
+          if (isScoutsBSA) {
+            ranksYTD = parseInt(row.totalytd) || 0;
+            ranksMTD = parseInt(row.totalmtd) || 0;
+            totalMeritBadgesYTD += parseInt(row.meritbadgesytd) || 0;
+            totalMeritBadgesMTD += parseInt(row.meritbadgesmtd) || 0;
+            
+            ['scout', 'tenderfoot', 'secondclass', 'firstclass', 'star', 'life', 'eagle', 'palms'].forEach(rank => {
+              if (!rankProgression[rank]) rankProgression[rank] = 0;
+              if (!rankProgressionMTD[rank]) rankProgressionMTD[rank] = 0;
+              rankProgression[rank] += parseInt(row[rank + 'ytd']) || 0;
+              rankProgressionMTD[rank] += parseInt(row[rank + 'mtd']) || 0;
+            });
+            
+          } else if (isCubScout) {
+            ranksYTD = parseInt(row.ranksytd) || 0;
+            ranksMTD = parseInt(row.ranksmtd) || 0;
+            
+            ['lion', 'tiger', 'wolf', 'bear', 'webelos'].forEach(rank => {
+              if (!rankProgression[rank]) rankProgression[rank] = 0;
+              if (!rankProgressionMTD[rank]) rankProgressionMTD[rank] = 0;
+              rankProgression[rank] += parseInt(row[rank + 'ytd']) || 0;
+              rankProgressionMTD[rank] += parseInt(row[rank + 'mtd']) || 0;
+            });
+            
+            if (!rankProgression.arrowoflight) rankProgression.arrowoflight = 0;
+            if (!rankProgressionMTD.arrowoflight) rankProgressionMTD.arrowoflight = 0;
+            rankProgression.arrowoflight += parseInt(row.lightytd) || 0;
+            rankProgressionMTD.arrowoflight += parseInt(row.lightmtd) || 0;
+            
+          } else {
+            ranksYTD = parseInt(row.totalytd) || parseInt(row.ranksytd) || 0;
+            ranksMTD = parseInt(row.totalmtd) || parseInt(row.ranksmtd) || 0;
+          }
+          
+          totalRanksYTD += ranksYTD;
+          totalRanksMTD += ranksMTD;
+          if (ranksYTD > 0) unitsWithActivity++;
+        });
+
+        return {
+          totalYouth,
+          totalRanksYTD,
+          totalRanksMTD,
+          totalMeritBadgesYTD,
+          totalMeritBadgesMTD,
+          avgRanksPerYouth: totalYouth > 0 ? totalRanksYTD / totalYouth : 0,
+          unitsWithActivity,
+          totalUnits: units.length,
+          units,
+          isScoutsBSA,
+          isCubScout,
+          rankProgression,
+          rankProgressionMTD
+        };
+      };
+
+      const cubStats = calculateStats(data.cubScout);
+      const bsaStats = calculateStats(data.scoutsBSA);
+      const venturingStats = calculateStats(data.venturing);
+      const seaScoutStats = calculateStats(data.seaScout);
+
+      // Cross-check and move misplaced units
+      const normalizeData = () => {
+        const allUnits = [];
+        
+        [data.cubScout, data.scoutsBSA, data.venturing, data.seaScout].forEach(programData => {
+          if (programData && programData.rows) {
+            programData.rows.forEach(row => {
+              if (row.organizationname && !row.organizationname.includes(districtName)) {
+                allUnits.push({ ...row, sourceHeaders: programData.headers });
+              }
+            });
+          }
+        });
+        
+        const categorized = {
+          packs: [],
+          troops: [],
+          crews: [],
+          ships: []
+        };
+        
+        allUnits.forEach(unit => {
+          const name = unit.organizationname.toLowerCase();
+          if (name.includes('pack')) {
+            categorized.packs.push(unit);
+          } else if (name.includes('troop')) {
+            categorized.troops.push(unit);
+          } else if (name.includes('crew')) {
+            categorized.crews.push(unit);
+          } else if (name.includes('ship')) {
+            categorized.ships.push(unit);
+          }
+        });
+        
+        const dedup = (units) => {
+          const seen = new Set();
+          return units.filter(unit => {
+            if (seen.has(unit.organizationname)) return false;
+            seen.add(unit.organizationname);
+            return true;
+          });
+        };
+        
+        return {
+          packs: dedup(categorized.packs),
+          troops: dedup(categorized.troops),
+          crews: dedup(categorized.crews),
+          ships: dedup(categorized.ships)
+        };
+      };
+      
+      const normalized = normalizeData();
+      
+      // Recalculate stats with normalized data
+      const calculateNormalizedStats = (units, isCubScout, isScoutsBSA) => {
+        if (!units || units.length === 0) return null;
+        
+        // Filter out units with zero youth members
+        const activeUnits = units.filter(row => {
+          const youth = parseInt(row.youthqtt) || 0;
+          return youth > 0;
+        });
+        
+        const excludedUnits = units.filter(row => {
+          const youth = parseInt(row.youthqtt) || 0;
+          return youth === 0;
+        });
+        
+        let totalYouth = 0;
+        let totalRanksYTD = 0;
+        let totalRanksMTD = 0;
+        let totalMeritBadgesYTD = 0;
+        let totalMeritBadgesMTD = 0;
+        let unitsWithActivity = 0;
+        
+        let rankProgression = null;
+        let rankProgressionMTD = null;
+        
+        if (isScoutsBSA || isCubScout) {
+          rankProgression = {};
+          rankProgressionMTD = {};
+        }
+
+        activeUnits.forEach(row => {
+          const youth = parseInt(row.youthqtt) || 0;
+          totalYouth += youth;
+          
+          let ranksYTD = 0;
+          let ranksMTD = 0;
+          
+          if (isScoutsBSA) {
+            ranksYTD = parseInt(row.totalytd) || 0;
+            ranksMTD = parseInt(row.totalmtd) || 0;
+            totalMeritBadgesYTD += parseInt(row.meritbadgesytd) || 0;
+            totalMeritBadgesMTD += parseInt(row.meritbadgesmtd) || 0;
+            
+            ['scout', 'tenderfoot', 'secondclass', 'firstclass', 'star', 'life', 'eagle', 'palms'].forEach(rank => {
+              if (!rankProgression[rank]) rankProgression[rank] = 0;
+              if (!rankProgressionMTD[rank]) rankProgressionMTD[rank] = 0;
+              rankProgression[rank] += parseInt(row[rank + 'ytd']) || 0;
+              rankProgressionMTD[rank] += parseInt(row[rank + 'mtd']) || 0;
+            });
+            
+          } else if (isCubScout) {
+            ranksYTD = parseInt(row.ranksytd) || 0;
+            ranksMTD = parseInt(row.ranksmtd) || 0;
+            
+            ['lion', 'tiger', 'wolf', 'bear', 'webelos'].forEach(rank => {
+              if (!rankProgression[rank]) rankProgression[rank] = 0;
+              if (!rankProgressionMTD[rank]) rankProgressionMTD[rank] = 0;
+              rankProgression[rank] += parseInt(row[rank + 'ytd']) || 0;
+              rankProgressionMTD[rank] += parseInt(row[rank + 'mtd']) || 0;
+            });
+            
+            if (!rankProgression.arrowoflight) rankProgression.arrowoflight = 0;
+            if (!rankProgressionMTD.arrowoflight) rankProgressionMTD.arrowoflight = 0;
+            rankProgression.arrowoflight += parseInt(row.lightytd) || 0;
+            rankProgressionMTD.arrowoflight += parseInt(row.lightmtd) || 0;
+            
+          } else {
+            ranksYTD = parseInt(row.totalytd) || parseInt(row.ranksytd) || 0;
+            ranksMTD = parseInt(row.totalmtd) || parseInt(row.ranksmtd) || 0;
+          }
+          
+          totalRanksYTD += ranksYTD;
+          totalRanksMTD += ranksMTD;
+          if (ranksYTD > 0) unitsWithActivity++;
+        });
+
+        return {
+          totalYouth,
+          totalRanksYTD,
+          totalRanksMTD,
+          totalMeritBadgesYTD,
+          totalMeritBadgesMTD,
+          avgRanksPerYouth: totalYouth > 0 ? totalRanksYTD / totalYouth : 0,
+          unitsWithActivity,
+          totalUnits: activeUnits.length,
+          excludedUnitsCount: excludedUnits.length,
+          units: activeUnits,
+          excludedUnits,
+          isScoutsBSA,
+          isCubScout,
+          rankProgression,
+          rankProgressionMTD
+        };
+      };
+      
+      const cubStatsClean = calculateNormalizedStats(normalized.packs, true, false);
+      const bsaStatsClean = calculateNormalizedStats(normalized.troops, false, true);
+      const venturingStatsClean = normalized.crews.length > 0 ? calculateNormalizedStats(normalized.crews, false, false) : null;
+      const seaScoutStatsClean = normalized.ships.length > 0 ? calculateNormalizedStats(normalized.ships, false, false) : null;
+
+      const totalYouth = (cubStatsClean?.totalYouth || 0) + (bsaStatsClean?.totalYouth || 0) + 
+                         (venturingStatsClean?.totalYouth || 0) + (seaScoutStatsClean?.totalYouth || 0);
+      const totalRanks = (cubStatsClean?.totalRanksYTD || 0) + (bsaStatsClean?.totalRanksYTD || 0) + 
+                         (venturingStatsClean?.totalRanksYTD || 0) + (seaScoutStatsClean?.totalRanksYTD || 0);
+
+      const getStatus = (ranksYTD, youth) => {
+        if (ranksYTD === 0) return { color: 'text-red-500', label: '❗ Zero Activity' };
+        const rate = ranksYTD / youth;
+        if (rate >= 0.8) return { color: 'text-green-500', label: '✔ High Performer' };
+        if (rate >= 0.5) return { color: 'text-blue-500', label: '✔ On Track' };
+        return { color: 'text-yellow-500', label: '⚠ Below Average' };
+      };
+
+      const renderProgram = (title, stats, emoji) => {
+        if (!stats) return null;
+
+        return (
+          <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
+            <div className="flex justify-between items-start mb-4">
+              <h2 className="text-2xl font-bold">{emoji} {title}</h2>
+              {stats.excludedUnitsCount > 0 && (
+                <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
+                  {stats.excludedUnitsCount} unit{stats.excludedUnitsCount > 1 ? 's' : ''} with 0 members excluded
+                </span>
+              )}
+            </div>
+            
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+              <div className="bg-blue-50 p-4 rounded">
+                <div className="text-sm text-gray-600">Youth</div>
+                <div className="text-2xl font-bold">{stats.totalYouth}</div>
+              </div>
+              <div className="bg-green-50 p-4 rounded">
+                <div className="text-sm text-gray-600">Ranks YTD</div>
+                <div className="text-2xl font-bold">{stats.totalRanksYTD}</div>
+                <div className="text-xs text-gray-500">MTD: {stats.totalRanksMTD}</div>
+              </div>
+              {stats.isScoutsBSA && (
+                <div className="bg-indigo-50 p-4 rounded">
+                  <div className="text-sm text-gray-600">Merit Badges YTD</div>
+                  <div className="text-2xl font-bold">{stats.totalMeritBadgesYTD}</div>
+                  <div className="text-xs text-gray-500">MTD: {stats.totalMeritBadgesMTD}</div>
+                </div>
+              )}
+              <div className="bg-purple-50 p-4 rounded">
+                <div className="text-sm text-gray-600">Avg/Youth</div>
+                <div className="text-2xl font-bold">{stats.avgRanksPerYouth.toFixed(2)}</div>
+              </div>
+              <div className="bg-orange-50 p-4 rounded">
+                <div className="text-sm text-gray-600">Active Units</div>
+                <div className="text-2xl font-bold">{stats.unitsWithActivity}/{stats.totalUnits}</div>
+              </div>
+            </div>
+
+            {/* Rank Progression Bars */}
+            {stats.rankProgression && (stats.isScoutsBSA || stats.isCubScout) && (
+              <div className="mb-6 bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-lg">
+                <h3 className="text-lg font-bold mb-4">📊 Rank Progression Funnel (YTD)</h3>
+                
+                <div className="bg-yellow-50 border-l-4 border-yellow-400 p-3 mb-4 text-sm">
+                  <div className="font-semibold text-yellow-900">⚠️ Data Limitation:</div>
+                  <div className="text-yellow-800">This shows ranks earned this period, not true conversion rates.</div>
+                </div>
+                
+                {stats.isScoutsBSA && (
+                  <div className="space-y-3">
+                    {(() => {
+                      const ranks = [
+                        { name: 'Scout', count: stats.rankProgression.scout || 0, color: 'bg-blue-500' },
+                        { name: 'Tenderfoot', count: stats.rankProgression.tenderfoot || 0, color: 'bg-green-500' },
+                        { name: '2nd Class', count: stats.rankProgression.secondclass || 0, color: 'bg-yellow-500' },
+                        { name: '1st Class', count: stats.rankProgression.firstclass || 0, color: 'bg-orange-500' },
+                        { name: 'Star', count: stats.rankProgression.star || 0, color: 'bg-purple-500' },
+                        { name: 'Life', count: stats.rankProgression.life || 0, color: 'bg-red-500' },
+                        { name: 'Eagle', count: stats.rankProgression.eagle || 0, color: 'bg-yellow-600' }
+                      ];
+                      
+                      const maxCount = Math.max(...ranks.map(r => r.count));
+                      
+                      return ranks.map((rank, idx) => {
+                        const prevCount = idx > 0 ? ranks[idx - 1].count : null;
+                        const widthPct = maxCount > 0 ? (rank.count / maxCount) * 100 : 0;
+                        
+                        return (
+                          <div key={rank.name}>
+                            <div className="flex items-center gap-3">
+                              <div className="w-24 text-sm font-medium text-right">{rank.name}</div>
+                              <div className="flex-1">
+                                <div className={`${rank.color} h-10 rounded-r-lg flex items-center justify-between px-3 text-white font-bold shadow-md`}
+                                     style={{width: `${Math.max(15, widthPct)}%`, minWidth: '80px'}}>
+                                  <span>{rank.count}</span>
+                                  {prevCount !== null && prevCount > 0 && (
+                                    <span className="text-xs opacity-90">
+                                      {((rank.count / prevCount) * 100).toFixed(0)}%
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      });
+                    })()}
+                  </div>
+                )}
+                
+                {stats.isCubScout && (
+                  <div className="space-y-3">
+                    {(() => {
+                      const ranks = [
+                        { name: 'Lion', count: stats.rankProgression.lion || 0, color: 'bg-yellow-400' },
+                        { name: 'Tiger', count: stats.rankProgression.tiger || 0, color: 'bg-orange-500' },
+                        { name: 'Wolf', count: stats.rankProgression.wolf || 0, color: 'bg-blue-500' },
+                        { name: 'Bear', count: stats.rankProgression.bear || 0, color: 'bg-green-600' },
+                        { name: 'Webelos', count: stats.rankProgression.webelos || 0, color: 'bg-purple-500' },
+                        { name: 'Arrow of Light', count: stats.rankProgression.arrowoflight || 0, color: 'bg-red-500' }
+                      ];
+                      
+                      const maxCount = Math.max(...ranks.map(r => r.count));
+                      
+                      return ranks.map((rank, idx) => {
+                        const prevCount = idx > 0 ? ranks[idx - 1].count : null;
+                        const widthPct = maxCount > 0 ? (rank.count / maxCount) * 100 : 0;
+                        
+                        return (
+                          <div key={rank.name}>
+                            <div className="flex items-center gap-3">
+                              <div className="w-28 text-sm font-medium text-right">{rank.name}</div>
+                              <div className="flex-1">
+                                <div className={`${rank.color} h-10 rounded-r-lg flex items-center justify-between px-3 text-white font-bold shadow-md`}
+                                     style={{width: `${Math.max(15, widthPct)}%`, minWidth: '80px'}}>
+                                  <span>{rank.count}</span>
+                                  {prevCount !== null && prevCount > 0 && (
+                                    <span className="text-xs opacity-90">
+                                      {((rank.count / prevCount) * 100).toFixed(0)}%
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      });
+                    })()}
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-gray-100">
+                  <tr>
+                    <th className="p-2 text-left">Unit</th>
+                    <th className="p-2 text-right">Youth</th>
+                    <th className="p-2 text-right">Ranks YTD</th>
+                    {stats.isScoutsBSA && <th className="p-2 text-right">Merit Badges</th>}
+                    <th className="p-2 text-right">Per Youth</th>
+                    <th className="p-2 text-center">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {stats.units.map((unit, idx) => {
+                    const youth = parseInt(unit.youthqtt) || 0;
+                    const ranksYTD = stats.isScoutsBSA ? (parseInt(unit.totalytd) || 0) : (parseInt(unit.ranksytd) || 0);
+                    const meritBadges = stats.isScoutsBSA ? (parseInt(unit.meritbadgesytd) || 0) : 0;
+                    const perYouth = youth > 0 ? (ranksYTD / youth).toFixed(2) : '0.00';
+                    const status = getStatus(ranksYTD, youth);
+
+                    return (
+                      <tr key={idx} className="border-b hover:bg-gray-50">
+                        <td className="p-2">{unit.organizationname}</td>
+                        <td className="p-2 text-right">{youth}</td>
+                        <td className="p-2 text-right">{ranksYTD}</td>
+                        {stats.isScoutsBSA && <td className="p-2 text-right">{meritBadges}</td>}
+                        <td className="p-2 text-right">{perYouth}</td>
+                        <td className="p-2 text-center">
+                          <span className={`text-xs ${status.color}`}>{status.label}</span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        );
+      };
+
+      return (
+        <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-8">
+          <div className="max-w-7xl mx-auto" id="report-content">
+            
+            {/* Upload Section */}
+            <div className="bg-white rounded-lg shadow-xl p-6 mb-6 print-hidden">
+              <h2 className="text-xl font-bold mb-4">Advancement Intelligence Dashboard - Workflow</h2>
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="border-2 border-blue-200 rounded-lg p-4 bg-blue-50">
+                  <div className="text-sm font-bold text-blue-900 mb-2">STEP 1: Upload Source Files</div>
+                  <p className="text-xs text-blue-700 mb-3">Upload CSV reports from my.scouting.org</p>
+                  <button
+                    onClick={() => setData(null)}
+                    className="w-full bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm"
+                  >
+                    📁 Upload Different Files
+                  </button>
+                </div>
+                
+                <div className="border-2 border-purple-200 rounded-lg p-4 bg-purple-50">
+                  <div className="text-sm font-bold text-purple-900 mb-2">STEP 2: Copy Content</div>
+                  <p className="text-xs text-purple-700 mb-3">Copy report text to paste in emails or docs</p>
+                  <button
+                    id="copy-btn"
+                    onClick={handleCopyToClipboard}
+                    className="w-full bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors text-sm"
+                  >
+                    📋 Copy to Clipboard
+                  </button>
+                </div>
+                
+                <div className="border-2 border-green-200 rounded-lg p-4 bg-green-50">
+                  <div className="text-sm font-bold text-green-900 mb-2">STEP 3: Export to PDF</div>
+                  <p className="text-xs text-green-700 mb-3">Download HTML file to save as PDF</p>
+                  <button
+                    onClick={handleExport}
+                    className="w-full bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors text-sm"
+                  >
+                    📄 Export to PDF
+                  </button>
+                </div>
+              </div>
+            </div>
+            
+            {/* Executive Summary */}
+            <div className="bg-white rounded-lg shadow-xl p-8 mb-6 border-t-4 border-blue-600">
+              <div className="flex justify-between items-start mb-6">
+                <div>
+                  <h1 className="text-3xl font-bold text-gray-800 mb-2">{districtName}</h1>
+                  <h2 className="text-xl text-gray-600">Advancement Intelligence Report - Executive Summary</h2>
+                </div>
+                <div className="text-right text-sm text-gray-600">
+                  <div><strong>Generated:</strong> {new Date().toLocaleDateString()}</div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                <div className="bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-lg p-4 shadow">
+                  <div className="text-sm opacity-90">Total Youth</div>
+                  <div className="text-3xl font-bold">{totalYouth}</div>
+                  <div className="text-xs opacity-90 mt-1">All Programs</div>
+                </div>
+                <div className="bg-gradient-to-br from-green-500 to-green-600 text-white rounded-lg p-4 shadow">
+                  <div className="text-sm opacity-90">Total Ranks YTD</div>
+                  <div className="text-3xl font-bold">{totalRanks}</div>
+                  <div className="text-xs opacity-90 mt-1">
+                    {totalYouth > 0 ? ((totalRanks / totalYouth) * 100).toFixed(0) : 0}% participation
+                  </div>
+                </div>
+                <div className="bg-gradient-to-br from-purple-500 to-purple-600 text-white rounded-lg p-4 shadow">
+                  <div className="text-sm opacity-90">Active Units</div>
+                  <div className="text-3xl font-bold">
+                    {(cubStatsClean?.unitsWithActivity || 0) + (bsaStatsClean?.unitsWithActivity || 0) + 
+                     (venturingStatsClean?.unitsWithActivity || 0) + (seaScoutStatsClean?.unitsWithActivity || 0)}
+                    /
+                    {(cubStatsClean?.totalUnits || 0) + (bsaStatsClean?.totalUnits || 0) + 
+                     (venturingStatsClean?.totalUnits || 0) + (seaScoutStatsClean?.totalUnits || 0)}
+                  </div>
+                </div>
+                <div className="bg-gradient-to-br from-orange-500 to-orange-600 text-white rounded-lg p-4 shadow">
+                  <div className="text-sm opacity-90">District Health</div>
+                  <div className="text-3xl font-bold">
+                    {(() => {
+                      const totalUnits = (cubStatsClean?.totalUnits || 0) + (bsaStatsClean?.totalUnits || 0);
+                      const activeUnits = (cubStatsClean?.unitsWithActivity || 0) + (bsaStatsClean?.unitsWithActivity || 0);
+                      const participationRate = totalYouth > 0 ? (totalRanks / totalYouth) * 100 : 0;
+                      const unitEngagement = totalUnits > 0 ? (activeUnits / totalUnits) * 100 : 0;
+                      return Math.round((participationRate * 0.6 + unitEngagement * 0.4));
+                    })()}
+                  </div>
+                  <div className="text-xs opacity-90 mt-1">
+                    {(() => {
+                      const totalUnits = (cubStatsClean?.totalUnits || 0) + (bsaStatsClean?.totalUnits || 0);
+                      const activeUnits = (cubStatsClean?.unitsWithActivity || 0) + (bsaStatsClean?.unitsWithActivity || 0);
+                      const score = Math.round(((totalRanks / totalYouth) * 100 * 0.6) + 
+                        (totalUnits > 0 ? (activeUnits / totalUnits) * 100 * 0.4 : 0));
+                      if (score >= 70) return '✓+ Strong';
+                      if (score >= 50) return '✓ Good';
+                      return '○ Needs Focus';
+                    })()}
+                  </div>
+                </div>
+              </div>
+
+              {/* Key KPIs */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                <h3 className="font-bold text-gray-800 mb-3">Key Performance Indicators</h3>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                  <div>
+                    <div className="text-gray-600">Avg Ranks/Youth</div>
+                    <div className="text-2xl font-bold text-gray-800">{totalYouth > 0 ? (totalRanks / totalYouth).toFixed(2) : '0.00'}</div>
+                  </div>
+                  {bsaStatsClean && (
+                    <>
+                      <div>
+                        <div className="text-gray-600">Eagles YTD</div>
+                        <div className="text-2xl font-bold text-gray-800">{bsaStatsClean.rankProgression?.eagle || 0}</div>
+                      </div>
+                      <div>
+                        <div className="text-gray-600">Life Scouts</div>
+                        <div className="text-2xl font-bold text-gray-800">{bsaStatsClean.rankProgression?.life || 0}</div>
+                      </div>
+                      <div>
+                        <div className="text-gray-600">Avg MB/Scout</div>
+                        <div className="text-2xl font-bold text-gray-800">
+                          {bsaStatsClean.totalYouth > 0 ? (bsaStatsClean.totalMeritBadgesYTD / bsaStatsClean.totalYouth).toFixed(1) : '0.0'}
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Quick Navigation */}
+              <div className="bg-gradient-to-r from-gray-50 to-blue-50 border-2 border-blue-200 rounded-lg p-4 print-hidden">
+                <h3 className="font-bold text-gray-800 mb-3">📑 Jump to Section:</h3>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <button onClick={() => scrollToSection('cub-scouts')} className="bg-white border border-gray-300 rounded-lg p-3 hover:bg-blue-50 hover:border-blue-400 transition-all text-center cursor-pointer">
+                    <div className="text-2xl mb-1">🦁</div>
+                    <div className="text-sm font-medium text-gray-700">Cub Scouts</div>
+                  </button>
+                  <button onClick={() => scrollToSection('scouts-bsa')} className="bg-white border border-gray-300 rounded-lg p-3 hover:bg-blue-50 hover:border-blue-400 transition-all text-center cursor-pointer">
+                    <div className="text-2xl mb-1">⚜️</div>
+                    <div className="text-sm font-medium text-gray-700">Scouts BSA</div>
+                  </button>
+                  <button onClick={() => scrollToSection('eagle-pipeline')} className="bg-white border border-gray-300 rounded-lg p-3 hover:bg-yellow-50 hover:border-yellow-400 transition-all text-center cursor-pointer">
+                    <div className="text-2xl mb-1">🦅</div>
+                    <div className="text-sm font-medium text-gray-700">Eagle Pipeline</div>
+                  </button>
+                  <button onClick={() => scrollToSection('data-quality')} className="bg-white border border-gray-300 rounded-lg p-3 hover:bg-orange-50 hover:border-orange-400 transition-all text-center cursor-pointer">
+                    <div className="text-2xl mb-1">🔍</div>
+                    <div className="text-sm font-medium text-gray-700">Data Quality</div>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Program Sections */}
+            <div id="cub-scouts">
+              {renderProgram('Cub Scouts', cubStatsClean, '🦁')}
+            </div>
+            <div id="scouts-bsa">
+              {renderProgram('Scouts BSA', bsaStatsClean, '⚜️')}
+            </div>
+            
+            {/* Eagle Pipeline */}
+            <div id="eagle-pipeline">
+              {bsaStatsClean && bsaStatsClean.rankProgression && (
+                <div className="bg-gradient-to-br from-yellow-50 to-amber-100 rounded-lg shadow-lg p-6 mb-6 border-2 border-yellow-400">
+                  <h2 className="text-2xl font-bold mb-4">🦅 Eagle Scout Pipeline</h2>
+                  
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                    <div className="bg-white p-4 rounded-lg shadow">
+                      <div className="text-sm text-gray-600">Life Scouts</div>
+                      <div className="text-3xl font-bold text-red-600">{bsaStatsClean.rankProgression.life || 0}</div>
+                    </div>
+                    <div className="bg-white p-4 rounded-lg shadow">
+                      <div className="text-sm text-gray-600">Eagles YTD</div>
+                      <div className="text-3xl font-bold text-yellow-600">{bsaStatsClean.rankProgression.eagle || 0}</div>
+                    </div>
+                    <div className="bg-white p-4 rounded-lg shadow">
+                      <div className="text-sm text-gray-600">Palms</div>
+                      <div className="text-3xl font-bold text-purple-600">{bsaStatsClean.rankProgression.palms || 0}</div>
+                    </div>
+                    <div className="bg-white p-4 rounded-lg shadow">
+                      <div className="text-sm text-gray-600">Eagle Rate</div>
+                      <div className="text-3xl font-bold text-blue-600">
+                        {bsaStatsClean.totalYouth > 0 ? ((bsaStatsClean.rankProgression.eagle / bsaStatsClean.totalYouth) * 100).toFixed(1) : 0}%
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-white p-6 rounded-lg shadow">
+                    <h3 className="text-lg font-bold mb-4">Eagles by Unit</h3>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead className="bg-gray-100">
+                          <tr>
+                            <th className="p-2 text-left">Unit</th>
+                            <th className="p-2 text-right">Life Scouts</th>
+                            <th className="p-2 text-right">Eagles YTD</th>
+                            <th className="p-2 text-right">Palms</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {bsaStatsClean.units
+                            .filter(unit => {
+                              const life = parseInt(unit.lifeytd) || 0;
+                              const eagle = parseInt(unit.eagleytd) || 0;
+                              return life > 0 || eagle > 0;
+                            })
+                            .sort((a, b) => (parseInt(b.eagleytd) || 0) - (parseInt(a.eagleytd) || 0))
+                            .map((unit, idx) => (
+                              <tr key={idx} className="border-b hover:bg-yellow-50">
+                                <td className="p-2">{unit.organizationname}</td>
+                                <td className="p-2 text-right text-red-600 font-bold">{parseInt(unit.lifeytd) || 0}</td>
+                                <td className="p-2 text-right text-yellow-600 font-bold">{parseInt(unit.eagleytd) || 0}</td>
+                                <td className="p-2 text-right text-purple-600">{parseInt(unit.palmsytd) || 0}</td>
+                              </tr>
+                            ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+            
+            <div id="venturing">
+              {renderProgram('Venturing', venturingStatsClean, '⛰️')}
+            </div>
+            <div id="sea-scouts">
+              {renderProgram('Sea Scouts', seaScoutStatsClean, '⚓')}
+            </div>
+
+            {/* Data Quality Section */}
+            <div id="data-quality" className="bg-white rounded-lg shadow-xl p-6 mb-6 border-l-4 border-orange-600">
+              <h2 className="text-2xl font-bold mb-4">🔍 Data Quality & Anomalies</h2>
+              <p className="text-gray-600 mb-4">
+                Units with data quality issues are shown here and excluded from the statistics above.
+              </p>
+
+              {(() => {
+                const anomalies = {
+                  zeroYouth: [],
+                  duplicates: []
+                };
+
+                // Collect zero-member units
+                [cubStatsClean, bsaStatsClean, venturingStatsClean, seaScoutStatsClean].forEach(stats => {
+                  if (stats && stats.excludedUnits) {
+                    stats.excludedUnits.forEach(unit => {
+                      const ranksYTD = parseInt(unit.totalytd) || parseInt(unit.ranksytd) || 0;
+                      const meritBadges = parseInt(unit.meritbadgesytd) || 0;
+                      const hasActivity = ranksYTD > 0 || meritBadges > 0;
+                      anomalies.zeroYouth.push({
+                        unit: unit.organizationname,
+                        issue: hasActivity 
+                          ? `0 registered youth but has ${ranksYTD} ranks${meritBadges > 0 ? ` and ${meritBadges} merit badges` : ''} recorded`
+                          : '0 registered youth members',
+                        treatment: 'Excluded from program tables, totals, and all ratio calculations'
+                      });
+                    });
+                  }
+                });
+
+                const hasAnomalies = anomalies.zeroYouth.length > 0;
+
+                if (!hasAnomalies) {
+                  return (
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                      <div className="flex items-center gap-2 text-green-800">
+                        <CheckCircle className="w-5 h-5" />
+                        <span className="font-semibold">✓ No data quality issues detected</span>
+                      </div>
+                    </div>
+                  );
+                }
+
+                return (
+                  <>
+                    {anomalies.zeroYouth.length > 0 && (
+                      <div className="mb-4">
+                        <h3 className="font-bold text-red-600 mb-2 flex items-center gap-2">
+                          <AlertCircle className="w-5 h-5" />
+                          Units with Zero Registered Members - EXCLUDED ({anomalies.zeroYouth.length})
+                        </h3>
+                        <p className="text-sm text-gray-600 mb-3">
+                          These units are <strong>not included</strong> in program tables, totals, or ratio calculations above.
+                        </p>
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-sm border border-gray-200">
+                            <thead className="bg-gray-100">
+                              <tr>
+                                <th className="p-2 text-left border-b">Unit</th>
+                                <th className="p-2 text-left border-b">Issue</th>
+                                <th className="p-2 text-left border-b">Treatment</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {anomalies.zeroYouth.map((item, idx) => (
+                                <tr key={idx} className="border-b">
+                                  <td className="p-2">{item.unit}</td>
+                                  <td className="p-2 text-red-700">{item.issue}</td>
+                                  <td className="p-2 text-gray-600 italic">{item.treatment}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
+            </div>
+
+            {/* Footer */}
+            <div className="text-center text-xs text-gray-500 mt-8">
+              <p>Scouting America Advancement Intelligence Dashboard</p>
+              <p>Data stays in your browser - nothing is uploaded to any server</p>
+            </div>
+          </div>
+        </div>
+      );
+    };
+
+    ReactDOM.render(<AdvancementDashboard />, document.getElementById('root'));
+  </script>
+</body>
+</html>
